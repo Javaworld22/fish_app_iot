@@ -162,7 +162,22 @@ while True:
         temp = sensor1.temperature()
         humidity = sensor1.humidity()
         analogue_reading = adc_pin.read_u16()
-        ppm = 100 * (analogue_reading / (65536 - 15000))
+        #ppm = 100 * (analogue_reading / (65536 - 15000))
+        
+        voltage    = (analogue_reading / 65535) * 3.3
+        Rs         = ((3.3 - voltage) / voltage) * 10   # 10 = load resistor in kΩ
+        Ro         = 10                                  # calibrated clean-air resistance
+        ratio      = Rs / Ro
+
+        # Power law from MQ-2 datasheet (for LPG/Smoke)
+        ppm = 574.25 * (ratio ** -2.222)
+
+        # Scale to 0 - 100
+        PPM_MIN = 200       # MQ-2 minimum detection
+        PPM_MAX = 10000     # MQ-2 maximum detection
+
+        ppm_scaled = (ppm_raw - PPM_MIN) / (PPM_MAX - PPM_MIN) * 100
+        ppm_scaled = max(0, min(100, ppm_scaled))   # clamp between 0 and 100
         
         if ppm >= GAS_DANGER:
             led_red()
